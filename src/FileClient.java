@@ -46,13 +46,24 @@ public class FileClient {
                 }
                     break;
                 case "L": // List
+                    // Send L command to server
+                    ByteBuffer listRequest = ByteBuffer.wrap((command).getBytes());
+                    SocketChannel listChannel = SocketChannel.open();
+                    listChannel.connect(new InetSocketAddress(args[0], serverPort));
+                    listChannel.write(listRequest);
+                    listChannel.shutdownOutput();
                     break;
                 case "R": // Rename
+                    // Get input from user
                     System.out.println("Enter the name of the file you would like to rename.");
                     String fileRename = keyboard.nextLine();
+                    int fileLength = fileRename.length();
+
                     System.out.println("Enter what you would like to rename this to.");
                     String newName = keyboard.nextLine();
-                    ByteBuffer renameRequest = ByteBuffer.wrap((command + fileRename + newName).getBytes());
+
+                    // Send request to server
+                    ByteBuffer renameRequest = ByteBuffer.wrap((command + fileRename + fileLength + newName).getBytes());
                     break;
                 case "U": // Upload
                     break;
