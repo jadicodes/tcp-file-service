@@ -1,3 +1,4 @@
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -43,15 +44,24 @@ public class FileClient {
                     }
                     else{
                         System.out.println("Invalid server code received.");
-                }
+                    }
                     break;
                 case "L": // List
-                    // Send L command to server
-                    ByteBuffer listRequest = ByteBuffer.wrap((command).getBytes());
-                    SocketChannel listChannel = SocketChannel.open();
-                    listChannel.connect(new InetSocketAddress(args[0], serverPort));
-                    listChannel.write(listRequest);
-                    listChannel.shutdownOutput();
+                    ByteBuffer listR = ByteBuffer.wrap((command).getBytes());
+                    SocketChannel listC = SocketChannel.open();
+                    listC.connect(new InetSocketAddress(args[0], serverPort));
+                    listC.write(listR);
+                    listC.shutdownOutput();
+
+                    ByteBuffer listReply = ByteBuffer.allocate(1024);
+                    listC.read(listReply);
+                    listC.close();
+                    listR.flip();
+
+                    byte[] listBytes = new byte[listReply.remaining()];
+                    listReply.get(listBytes);
+                    String filesList = new String(listBytes);
+                    System.out.println("Files:\n" + filesList);
                     break;
                 case "R": // Rename
                     // Get input from user
@@ -66,6 +76,32 @@ public class FileClient {
                     ByteBuffer renameRequest = ByteBuffer.wrap((command + fileRename + fileLength + newName).getBytes());
                     break;
                 case "U": // Upload
+                    System.out.println("Please enter the path of the file you would like to upload.");
+                    String uploadFileName = keyboard.nextLine();
+                    SocketChannel uploadChannel = SocketChannel.open();
+                    FileInputStream fis = new FileInputStream(uploadFileName);
+                    byte[] data = new byte[1024];
+                    int bytesRead = 0;
+                    while((bytesRead=fis.read(data)) != -1) {
+                        ByteBuffer buffer = ByteBuffer.wrap(data, 0, bytesRead);
+                        uploadChannel.write(buffer);
+                    }
+                    ByteBuffer uploadReply = ByteBuffer.allocate(1);
+                    uploadChannel.read(uploadReply);
+                    uploadChannel.close();
+                    uploadReply.flip();
+                    byte[] b = new byte[1];
+                    uploadReply.get(b);
+                    String uploadCode = new String(b);
+                    if(uploadCode.equals("S")){
+                        System.out.println("File successfully deleted.");
+                    }
+                    else if(uploadCode.equals("F")){
+                        System.out.println("Failed to delete file.");
+                    }
+                    else{
+                        System.out.println("Invalid server code received.");
+                    }
                     break;
                 case "G": // Download
                     break;
