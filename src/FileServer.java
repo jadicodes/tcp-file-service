@@ -77,9 +77,10 @@ public class FileServer {
         try (FileOutputStream fos = new FileOutputStream("ServerFiles/uploaded_file")) {
             int bytesRead;
             while ((bytesRead = serveChannel.read(buffer)) != -1) {
-                buffer.flip();
+                buffer.flip(); // Prepare buffer for reading
                 fos.write(buffer.array(), 0, bytesRead);
-                buffer.clear();
+                buffer.clear(); // Clear buffer for the next read
+                System.out.println("Bytes read: " + bytesRead); // Debug print
             }
             ByteBuffer replyBuffer = ByteBuffer.wrap("S".getBytes());
             serveChannel.write(replyBuffer);

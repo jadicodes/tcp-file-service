@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -81,7 +82,10 @@ public class FileClient {
         try (SocketChannel channel = SocketChannel.open();
              FileInputStream fis = new FileInputStream(filePath)) {
             channel.connect(new InetSocketAddress(serverIp, port));
-            channel.write(ByteBuffer.wrap(("U" + filePath).getBytes()));
+
+            // Send the command and filename first
+            String filename = new File(filePath).getName();
+            channel.write(ByteBuffer.wrap(("U" + filename).getBytes()));
 
             byte[] data = new byte[1024];
             int bytesRead;
@@ -91,6 +95,7 @@ public class FileClient {
             // Indicate end of file transfer
             channel.shutdownOutput();
 
+            // Read the response from the server
             ByteBuffer reply = ByteBuffer.allocate(1);
             channel.read(reply);
             reply.flip();
