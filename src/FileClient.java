@@ -18,6 +18,7 @@ public class FileClient {
 
         do {
             System.out.println("\nPlease enter a command.");
+            System.out.println("D (Delete), L (List), R (Rename), U (Upload), G (Download), Q (Quit)");
             command = keyboard.nextLine().toUpperCase();
 
             switch (command) {
@@ -33,10 +34,10 @@ public class FileClient {
 
                 case "R": // Rename
                     System.out.println("Enter the name of the file you would like to rename:");
-                    String fileRename = keyboard.nextLine();
+                    String oldName = keyboard.nextLine();
                     System.out.println("Enter what you would like to rename this to:");
                     String newName = keyboard.nextLine();
-                    sendCommandToServer(command + fileRename + newName, serverPort, args[0]);
+                    sendCommandToServer("R" + oldName + "\0" + newName, serverPort, args[0]);
                     break;
 
                 case "U": // Upload

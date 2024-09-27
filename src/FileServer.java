@@ -29,7 +29,7 @@ public class FileServer {
                         handleList(serveChannel);
                         break;
                     case "R": // Rename
-                        // Implement rename logic here
+                        handleRename(serveChannel, request);
                         break;
                     case "U": // Upload
                         handleUpload(serveChannel);
@@ -71,6 +71,30 @@ public class FileServer {
         ByteBuffer listResponse = ByteBuffer.wrap(fileList.toString().getBytes());
         serveChannel.write(listResponse);
     }
+
+    private static void handleRename(SocketChannel serveChannel, ByteBuffer request) throws Exception {
+        byte[] fileNameBytes = new byte[request.remaining()];
+        request.get(fileNameBytes);
+        String[] fileNames = new String(fileNameBytes).split("\0");
+
+        if (fileNames.length != 2) {
+            ByteBuffer response = ByteBuffer.wrap("F".getBytes());
+            serveChannel.write(response);
+            System.out.println("Invalid rename command.");
+            return;
+        }
+
+        String oldFileName = fileNames[0];
+        String newFileName = fileNames[1];
+        File oldFile = new File("ServerFiles/" + oldFileName);
+        File newFile = new File("ServerFiles/" + newFileName);
+
+        boolean success = oldFile.renameTo(newFile);
+        ByteBuffer response = ByteBuffer.wrap(success ? "S".getBytes() : "F".getBytes());
+        serveChannel.write(response);
+        System.out.println(success ? "File renamed successfully." : "Unable to rename file.");
+    }
+
 
     private static void handleUpload(SocketChannel serveChannel) throws Exception {
         ByteBuffer buffer = ByteBuffer.allocate(1024);
