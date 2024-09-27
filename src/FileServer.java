@@ -6,87 +6,88 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 
 public class FileServer {
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception {
         int port = 3000;
         ServerSocketChannel listenChannel = ServerSocketChannel.open();
         listenChannel.bind(new InetSocketAddress(port));
-        while(true){
-            SocketChannel serveChannel = listenChannel.accept();
-            ByteBuffer request = ByteBuffer.allocate(1024);
-            request.flip();
-            byte[] a = new byte[1];
-            request.get(a);
-            String command = new String(a);
-            switch (command){
-                case "D": // Delete
-                    byte[] b = new byte[request.remaining()];
-                    request.get(b);
-                    String fileName = new String(b);
+        System.out.println("Server started on port " + port);
 
-                    System.out.println("File to delete" + fileName);
-                    File file = new File("ServerFiles/" + fileName);
-                    boolean success = false;
-                    if(file.exists()){
-                        success = file.delete();
-                    }
-                    if(success){
-                        System.out.println("File deleted successfully.");
-                        ByteBuffer code = ByteBuffer.wrap("S".getBytes());
-                        serveChannel.write(code);
-                    }
-                    else{
-                        System.out.println("Unable to delete file.");
-                        ByteBuffer code = ByteBuffer.wrap("F".getBytes());
-                        serveChannel.write(code);
-                    }
-                    serveChannel.close();
-                    break;
-                case "L": // List
-                    File folder = new File("");
-                    File[] listFiles = folder.listFiles();
-                    StringBuilder fileList = new StringBuilder();
-                    if (listFiles != null && listFiles.length > 0) {
-                        for (File f : listFiles) {
-                            if (f.isFile()) {
-                                fileList.append(f.getName()).append("\n");
-                            }
-                        }
-                    } else {
-                        fileList.append("No files");
-                    }
-                    ByteBuffer listResponse = ByteBuffer.wrap(fileList.toString().getBytes());
-                    serveChannel.write(listResponse);
-                    serveChannel.close();
-                    break;
-                case "R": // Rename
-                    break;
-                case "U": // Upload
-                    ServerSocketChannel uploadListenChannel = ServerSocketChannel.open();
-                    uploadListenChannel.bind(new InetSocketAddress(3000));
-                    while(true){
-                        SocketChannel uploadServeChannel = uploadListenChannel.accept();
-                        FileOutputStream fos = new FileOutputStream("test2.");
-                        ByteBuffer buffer = ByteBuffer.allocate(1024);
-                        int bytesRead;
-                        while((bytesRead = uploadServeChannel.read(buffer)) != -1) {
-                            buffer.flip();
-                            byte[] c = new byte[bytesRead];
-                            buffer.get(c);
-                            fos.write(c);
-                            buffer.clear();
-                        }
-                        fos.close();
-                        String replyMessage = "S";
-                        ByteBuffer replyBuffer =
-                                ByteBuffer.wrap(replyMessage.getBytes());
-                        uploadServeChannel.write(replyBuffer);
-                        uploadServeChannel.close();
-                    }
-                case "G": // Download
-                    break;
-                default:
-                    System.out.println("Invalid input!");
+        while (true) {
+            try (SocketChannel serveChannel = listenChannel.accept()) {
+                ByteBuffer request = ByteBuffer.allocate(1024);
+                serveChannel.read(request);
+                request.flip();
+                byte[] commandBytes = new byte[1];
+                request.get(commandBytes);
+                String command = new String(commandBytes);
+
+                switch (command) {
+                    case "D": // Delete
+                        handleDelete(serveChannel, request);
+                        break;
+                    case "L": // List
+                        handleList(serveChannel);
+                        break;
+                    case "R": // Rename
+                        // Implement rename logic here
+                        break;
+                    case "U": // Upload
+                        handleUpload(serveChannel);
+                        break;
+                    case "G": // Download
+                        // Implement download logic here
+                        break;
+                    default:
+                        System.out.println("Invalid input!");
+                }
             }
+        }
+    }
+
+    private static void handleDelete(SocketChannel serveChannel, ByteBuffer request) throws Exception {
+        byte[] fileNameBytes = new byte[request.remaining()];
+        request.get(fileNameBytes);
+        String fileName = new String(fileNameBytes);
+        File file = new File("ServerFiles/" + fileName);
+        boolean success = file.delete();
+        ByteBuffer response = ByteBuffer.wrap(success ? "S".getBytes() : "F".getBytes());
+        serveChannel.write(response);
+        System.out.println(success ? "File deleted successfully." : "Unable to delete file.");
+    }
+
+    private static void handleList(SocketChannel serveChannel) throws Exception {
+        File folder = new File("ServerFiles");
+        File[] listFiles = folder.listFiles();
+        StringBuilder fileList = new StringBuilder();
+        if (listFiles != null && listFiles.length > 0) {
+            for (File f : listFiles) {
+                if (f.isFile()) {
+                    fileList.append(f.getName()).append("\n");
+                }
+            }
+        } else {
+            fileList.append("No files");
+        }
+        ByteBuffer listResponse = ByteBuffer.wrap(fileList.toString().getBytes());
+        serveChannel.write(listResponse);
+    }
+
+    private static void handleUpload(SocketChannel serveChannel) throws Exception {
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        try (FileOutputStream fos = new FileOutputStream("ServerFiles/uploaded_file")) {
+            int bytesRead;
+            while ((bytesRead = serveChannel.read(buffer)) != -1) {
+                buffer.flip();
+                fos.write(buffer.array(), 0, bytesRead);
+                buffer.clear();
+            }
+            ByteBuffer replyBuffer = ByteBuffer.wrap("S".getBytes());
+            serveChannel.write(replyBuffer);
+            System.out.println("File uploaded successfully.");
+        } catch (Exception e) {
+            System.out.println("Error during upload: " + e.getMessage());
+            ByteBuffer replyBuffer = ByteBuffer.wrap("F".getBytes());
+            serveChannel.write(replyBuffer);
         }
     }
 }
