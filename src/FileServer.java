@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -22,23 +23,17 @@ public class FileServer {
                 String command = new String(commandBytes);
 
                 switch (command) {
-                    case "D": // Delete
-                        handleDelete(serveChannel, request);
-                        break;
-                    case "L": // List
-                        handleList(serveChannel);
-                        break;
-                    case "R": // Rename
-                        handleRename(serveChannel, request);
-                        break;
-                    case "U": // Upload
-                        handleUpload(serveChannel);
-                        break;
-                    case "G": // Download
-                        // Implement download logic here
-                        break;
-                    default:
-                        System.out.println("Invalid input!");
+                    case "D" -> // Delete
+                            handleDelete(serveChannel, request);
+                    case "L" -> // List
+                            handleList(serveChannel);
+                    case "R" -> // Rename
+                            handleRename(serveChannel, request);
+                    case "U" -> // Upload
+                            handleUpload(serveChannel);
+                    case "G" -> // Download
+                            handleDownload(serveChannel, request);
+                    default -> System.out.println("Invalid input!");
                 }
             }
         }
@@ -111,6 +106,36 @@ public class FileServer {
             System.out.println("File uploaded successfully.");
         } catch (Exception e) {
             System.out.println("Error during upload: " + e.getMessage());
+            ByteBuffer replyBuffer = ByteBuffer.wrap("F".getBytes());
+            serveChannel.write(replyBuffer);
+        }
+    }
+
+    private static void handleDownload(SocketChannel serveChannel, ByteBuffer request) throws Exception {
+        byte[] fileNameBytes = new byte[request.remaining()];
+        request.get(fileNameBytes);
+        String fileName = new String(fileNameBytes);
+        File file = new File("ServerFiles/" + fileName);
+
+        if (!file.exists() || file.isDirectory()) {
+            ByteBuffer response = ByteBuffer.wrap("F".getBytes());
+            serveChannel.write(response);
+            System.out.println("Requested file not found: " + fileName);
+            return;
+        }
+
+        try (FileInputStream fis = new FileInputStream(file)) {
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer.array())) != -1) {
+                buffer.limit(bytesRead);
+                serveChannel.write(buffer);
+                buffer.clear();
+            }
+            serveChannel.shutdownOutput();
+            System.out.println("File sent successfully: " + fileName);
+        } catch (Exception e) {
+            System.out.println("Error during file download: " + e.getMessage());
             ByteBuffer replyBuffer = ByteBuffer.wrap("F".getBytes());
             serveChannel.write(replyBuffer);
         }
